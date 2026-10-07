@@ -16,7 +16,7 @@
 
 #### 导入方法
 
-设置 → 自动化 → 右上角三点 → **蓝图** → **导入蓝图**，粘贴：
+设置 → 自动化与场景 → **蓝图** → **导入蓝图**，粘贴：
 
 ```
 https://raw.githubusercontent.com/lxg20082008/ha-blueprints/main/low_battery.yaml
