@@ -16,11 +16,19 @@
 
 #### 导入方法
 
-设置 → 自动化与场景 → **蓝图** → **导入蓝图**，粘贴：
+设置 → 自动化与场景 → **蓝图** → **导入蓝图**，粘贴下面的**文件地址**：
 
 ```
 https://raw.githubusercontent.com/lxg20082008/ha-blueprints/main/low_battery.yaml
 ```
+
+也可以贴 GitHub 文件页地址（HA 会自动转 raw）：
+
+```
+https://github.com/lxg20082008/ha-blueprints/blob/main/low_battery.yaml
+```
+
+> ⚠️ 结尾必须是 `/low_battery.yaml`。贴仓库主页 `https://github.com/lxg20082008/ha-blueprints` 会报「mapping values are not allowed here」——因为主页是 HTML，不是 YAML。
 
 #### 配置项
 
@@ -32,7 +40,19 @@ https://raw.githubusercontent.com/lxg20082008/ha-blueprints/main/low_battery.yam
 | 排除的传感器 | 不参与提醒的设备（手机等） | 空 |
 | 通知动作 | 低电量时执行的动作 | — |
 
-通知 message 里用 `{{sensors}}`，会被替换为低电量设备名称列表。
+#### 通知动作怎么填
+
+「通知动作」选 **持久通知**（或 `notify.mobile_app_xxx` 手机推送），字段这样填：
+
+| 字段 | 填写 |
+|---|---|
+| 消息 | `低电量设备：{{sensors}}` |
+| 标题 | `🔋 低电量提醒` |
+| 通知标识符 | `low_battery`（固定 ID，新通知覆盖旧的；想保留多条就留空） |
+
+`{{sensors}}` 运行时会替换成实际低电量设备列表，例如：
+
+> 低电量设备：书房 温湿度计2 (15%)、弱电箱 温湿度传感器
 
 #### 触发逻辑
 
