@@ -1,0 +1,89 @@
+blueprint:
+  name: 电池低电量检测和通知（含事件型）
+  description: 每天定时检测所有电池传感器（百分比、二进制、事件型 event.*_low_battery），低电量时执行通知；事件型低电量会即时触发。
+  domain: automation
+  input:
+    threshold:
+      name: 电池警告阈值
+      description: 低于此阈值的电池传感器视为低电量（二进制电池传感器值 'on' 也视为低电量）。
+      default: 20
+      selector:
+        number:
+          min: 5.0
+          max: 100.0
+          unit_of_measurement: '%'
+          mode: slider
+          step: 5.0
+    time:
+      name: 检测时间
+      description: 每天在此时间检测一次。
+      default: '10:00:00'
+      selector:
+        time: {}
+    day:
+      name: 检测星期
+      description: 每天(0)或指定星期(1:周一 … 7:周日)。
+      default: 0
+      selector:
+        number:
+          min: 0.0
+          max: 7.0
+          mode: slider
+          step: 1.0
+    exclude:
+      name: 排除的传感器
+      description: 从检测中排除的电池传感器（如手机）。仅支持实体，需展开设备。
+      default:
+        entity_id: []
+      selector:
+        target:
+          entity:
+            device_class: battery
+    actions:
+      name: 通知动作
+      description: 低电量时执行的动作。{{sensors}} 会被替换为低电量设备名称列表。
+      selector:
+        action: {}
+  source_url: https://raw.githubusercontent.com/lxg20082008/ha-blueprints/main/low_battery.yaml
+variables:
+  day: !input day
+  threshold: !input threshold
+  exclude: !input exclude
+  sensors: >-
+    {% set result = namespace(sensors=[]) %}
+    {% for state in states.sensor | selectattr('attributes.device_class', '==', 'battery') %}
+      {% if 0 <= state.state | int(-1) < threshold | int and not state.entity_id in exclude.entity_id %}
+        {% set result.sensors = result.sensors + [state.name ~ ' (' ~ state.state ~ ' %)'] %}
+      {% endif %}
+    {% endfor %}
+    {% for state in states.binary_sensor | selectattr('attributes.device_class', '==', 'battery') | selectattr('state', '==', 'on') %}
+      {% if not state.entity_id in exclude.entity_id %}
+        {% set result.sensors = result.sensors + [state.name] %}
+      {% endif %}
+    {% endfor %}
+    {% for state in states.event %}
+      {% if 'low_battery' in state.entity_id and state.state not in ['unknown', 'unavailable', ''] %}
+        {% set result.sensors = result.sensors + [state.name] %}
+      {% endif %}
+    {% endfor %}
+    {{ result.sensors | join(', ') }}
+trigger:
+  - platform: time
+    at: !input time
+    id: daily
+  - platform: template
+    id: event
+    value_template: >-
+      {% set low = namespace(c=0) %}
+      {% for e in states.event %}
+        {% if 'low_battery' in e.entity_id and e.state not in ['unknown', 'unavailable', ''] %}
+          {% set low.c = low.c + 1 %}
+        {% endif %}
+      {% endfor %}
+      {{ low.c > 0 }}
+condition:
+  - '{{ sensors != '''' and (trigger.id == "event" or day | int == 0 or day | int == now().isoweekday()) }}'
+action:
+  - choose: []
+    default: !input actions
+mode: single
