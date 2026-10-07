@@ -1,6 +1,7 @@
 # HA 蓝图（Home Assistant Blueprints）
 
 个人的 Home Assistant 自动化蓝图集合，通过「导入蓝图」即可使用。
+社区教程：[https://bbs.hassbian.com/thread-32945-1-1.html](https://bbs.hassbian.com/thread-32945-1-1.html)
 
 ## 蓝图列表
 
