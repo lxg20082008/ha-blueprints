@@ -1,6 +1,6 @@
 blueprint:
   name: 电池低电量检测和通知（含事件型）
-  description: 每天定时检测所有电池传感器（百分比、二进制、事件型 event.*_low_battery），低电量时执行通知；事件型低电量会即时触发。
+  description: 每天定时检测所有电池传感器（百分比、二进制、事件型 event.*_low_battery），低电量时执行通知；事件型低电量即时触发。
   domain: automation
   input:
     threshold:
@@ -39,6 +39,15 @@ blueprint:
         target:
           entity:
             device_class: battery
+    event_entities:
+      name: 事件型低电量实体
+      description: 只报 event.*_low_battery、没有百分比传感器的设备，勾选这里（可多选）。这些设备一变低电量就会即时触发通知。
+      default: []
+      selector:
+        entity:
+          multiple: true
+          filter:
+            - domain: event
     actions:
       name: 通知动作
       description: 低电量时执行的动作。{{sensors}} 会被替换为低电量设备名称列表。
@@ -49,6 +58,7 @@ variables:
   day: !input day
   threshold: !input threshold
   exclude: !input exclude
+  event_entities: !input event_entities
   sensors: >-
     {% set result = namespace(sensors=[]) %}
     {% for state in states.sensor | selectattr('attributes.device_class', '==', 'battery') %}
@@ -61,9 +71,9 @@ variables:
         {% set result.sensors = result.sensors + [state.name] %}
       {% endif %}
     {% endfor %}
-    {% for state in states.event %}
-      {% if 'low_battery' in state.entity_id and state.state not in ['unknown', 'unavailable', ''] %}
-        {% set result.sensors = result.sensors + [state.name] %}
+    {% for eid in event_entities %}
+      {% if states(eid) not in ['unknown', 'unavailable', ''] %}
+        {% set result.sensors = result.sensors + [(state_attr(eid, 'friendly_name') or eid)] %}
       {% endif %}
     {% endfor %}
     {{ result.sensors | join(', ') }}
@@ -71,16 +81,9 @@ trigger:
   - platform: time
     at: !input time
     id: daily
-  - platform: template
+  - platform: state
     id: event
-    value_template: >-
-      {% set low = namespace(c=0) %}
-      {% for e in states.event %}
-        {% if 'low_battery' in e.entity_id and e.state not in ['unknown', 'unavailable', ''] %}
-          {% set low.c = low.c + 1 %}
-        {% endif %}
-      {% endfor %}
-      {{ low.c > 0 }}
+    entity_id: !input event_entities
 condition:
   - '{{ sensors != '''' and (trigger.id == "event" or day | int == 0 or day | int == now().isoweekday()) }}'
 action:
